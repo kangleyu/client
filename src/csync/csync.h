@@ -160,7 +160,9 @@ enum ItemType {
     ItemTypeFile = 0,
     ItemTypeSoftLink = 1,
     ItemTypeDirectory = 2,
-    ItemTypeSkip = 3
+    ItemTypeSkip = 3,
+    ItemTypePlaceholder = 4,
+    ItemTypePlaceholderDownload = 5
 };
 
 

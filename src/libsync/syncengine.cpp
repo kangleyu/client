@@ -432,6 +432,7 @@ int SyncEngine::treewalkFile(csync_file_stat_t *file, csync_file_stat_t *other, 
         item->_modtime = file->modtime;
         item->_size = file->size;
         item->_checksumHeader = file->checksumHeader;
+        item->_type = file->type;
     } else {
         if (instruction != CSYNC_INSTRUCTION_NONE) {
             qCWarning(lcEngine) << "ERROR: Instruction" << item->_instruction << "vs" << instruction << "for" << fileUtf8;
@@ -579,8 +580,6 @@ int SyncEngine::treewalkFile(csync_file_stat_t *file, csync_file_stat_t *other, 
         item->_inode = file->inode;
     }
 
-    item->_type = file->type;
-
     SyncFileItem::Direction dir = SyncFileItem::None;
 
     int re = 0;
@@ -621,7 +620,7 @@ int SyncEngine::treewalkFile(csync_file_stat_t *file, csync_file_stat_t *other, 
             if (remote) {
                 QString filePath = _localPath + item->_file;
 
-                if (other) {
+                if (other && other->type != ItemTypePlaceholder && other->type != ItemTypePlaceholderDownload) {
                     // Even if the mtime is different on the server, we always want to keep the mtime from
                     // the file system in the DB, this is to avoid spurious upload on the next sync
                     item->_modtime = other->modtime;
@@ -848,6 +847,8 @@ void SyncEngine::startSync()
 
     _csync_ctx->read_remote_from_db = true;
     _lastLocalDiscoveryStyle = _csync_ctx->local_discovery_style;
+
+    _csync_ctx->new_files_are_placeholders = account()->usePlaceholders();
 
     bool ok;
     auto selectiveSyncBlackList = _journal->getSelectiveSyncList(SyncJournalDb::SelectiveSyncBlackList, &ok);
