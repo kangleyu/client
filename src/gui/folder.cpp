@@ -692,6 +692,7 @@ void Folder::setSyncOptions()
     auto newFolderLimit = cfgFile.newBigFolderSizeLimit();
     opt._newBigFolderSizeLimit = newFolderLimit.first ? newFolderLimit.second * 1000LL * 1000LL : -1; // convert from MB to B
     opt._confirmExternalStorage = cfgFile.confirmExternalStorage();
+    opt._usePlaceholders = _definition.usePlaceholders;
 
     QByteArray chunkSizeEnv = qgetenv("OWNCLOUD_CHUNK_SIZE");
     if (!chunkSizeEnv.isEmpty()) {
@@ -1071,6 +1072,7 @@ void FolderDefinition::save(QSettings &settings, const FolderDefinition &folder)
     settings.setValue(QLatin1String("targetPath"), folder.targetPath);
     settings.setValue(QLatin1String("paused"), folder.paused);
     settings.setValue(QLatin1String("ignoreHiddenFiles"), folder.ignoreHiddenFiles);
+    settings.setValue(QLatin1String("usePlaceholders"), folder.usePlaceholders);
 
     // Happens only on Windows when the explorer integration is enabled.
     if (!folder.navigationPaneClsid.isNull())
@@ -1091,6 +1093,7 @@ bool FolderDefinition::load(QSettings &settings, const QString &alias,
     folder->paused = settings.value(QLatin1String("paused")).toBool();
     folder->ignoreHiddenFiles = settings.value(QLatin1String("ignoreHiddenFiles"), QVariant(true)).toBool();
     folder->navigationPaneClsid = settings.value(QLatin1String("navigationPaneClsid")).toUuid();
+    folder->usePlaceholders = settings.value(QLatin1String("usePlaceholders")).toBool();
     settings.endGroup();
 
     // Old settings can contain paths with native separators. In the rest of the
