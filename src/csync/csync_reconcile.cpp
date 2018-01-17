@@ -299,6 +299,17 @@ static int _csync_merge_algorithm_visitor(csync_file_stat_t *cur, CSYNC * ctx) {
             } else {
                 //qCDebug(lcReconcile, "[Reconciler] not ignoring file %s/%s", ctx->local.uri, cur->path);
             }
+
+            // If the db says this is a placeholder, but there is a local item,
+            // go to "possible conflict" mode by adjusting the remote instruction.
+            if (ctx->current == LOCAL_REPLICA
+                && (other->type == ItemTypePlaceholder || other->type == ItemTypePlaceholderDownload)
+                && cur->type != ItemTypePlaceholder
+                && other->instruction == CSYNC_INSTRUCTION_NONE) {
+                other->instruction = CSYNC_INSTRUCTION_EVAL;
+                other->type = ItemTypePlaceholderDownload;
+            }
+
             switch (other->instruction) {
             /* file on other replica is changed or new */
             case CSYNC_INSTRUCTION_NEW:
