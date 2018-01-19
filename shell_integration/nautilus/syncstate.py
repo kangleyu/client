@@ -19,6 +19,7 @@ import os
 import urllib
 import socket
 import tempfile
+import time
 
 from gi.repository import GObject, Nautilus
 
@@ -107,29 +108,43 @@ class SocketConnect(GObject.GObject):
 
         return True  # Run again, if enabled via timeout_add()
 
+    # Reads data that becomes available.
+    # New responses can be accessed with get_available_responses().
+    # Returns false if no data was received within timeout
+    def read_socket_data_with_timeout(self, timeout):
+        self._sock.settimeout(timeout)
+        try:
+            self._remainder += self._sock.recv(1024)
+        except socket.timeout:
+            return False
+        else:
+            return True
+        finally:
+            self._sock.settimeout(None)
+
+    # Parses response lines out of collected data, returns list of strings
+    def get_available_responses(self):
+        end = self._remainder.rfind('\n')
+        if end == -1:
+            return []
+        data = self._remainder[:end]
+        self._remainder = self._remainder[end+1:]
+        return data.split('\n')
+
     # Notify is the raw answer from the socket
     def _handle_notify(self, source, condition):
-        data = source.recv(1024)
-        # Prepend the remaining data from last call
-        if len(self._remainder) > 0:
-            data = self._remainder + data
-            self._remainder = ''
+        # Blocking is ok since we're notified of available data
+        self._remainder += self._sock.recv(1024)
 
-        if len(data) > 0:
-            # Remember the remainder for next round
-            lastNL = data.rfind('\n');
-            if lastNL > -1 and lastNL < len(data):
-                self._remainder = data[lastNL+1:]
-                data = data[:lastNL]
-
-            for l in data.split('\n'):
-                self._handle_server_response(l)
-        else:
+        if len(self._remainder) == 0:
             return False
+
+        for line in self.get_available_responses():
+            self.handle_server_response(line)
 
         return True  # Run again
 
-    def _handle_server_response(self, line):
+    def handle_server_response(self, line):
         print("Server response: " + line)
         parts = line.split(':')
         action = parts[0]
@@ -204,6 +219,33 @@ class MenuExtension(GObject.GObject, Nautilus.MenuProvider):
         entry = socketConnect.nautilusVFSFile_table.get(filename)
         if not entry:
             return []
+
+        # Get STRINGS synchronously
+        socketConnect.sendCommand('GET_STRINGS:\n')
+        done = False
+        start = time.time()
+        timeout = 0.1 # 100ms
+        # needs a global timeout
+        while not done:
+            dt = time.time() - start
+            if dt >= timeout:
+                break
+            if not socketConnect.read_socket_data_with_timeout(timeout - dt):
+                break
+            for line in socketConnect.get_available_responses():
+                # Process lines we don't care about
+                if done or not (line.startswith('GET_STRINGS:') or line.startswith('STRING:')):
+                    socketConnect.handle_server_response(line)
+                    continue
+                if line == 'GET_STRINGS:END':
+                    done = True
+                    # don't break - we'd discard other responses
+                if line.startswith('STRING:'):
+                    print(line)
+
+        if not done:
+            print('failed to read STRINGS')
+
 
         # Currently 'sharable' also controls access to private link actions,
         # and we definitely don't want to show them for IGNORED.
