@@ -75,4 +75,4 @@ Click the Finish button, and you're all done.
 
 .. Links
    
-.. _ownCloud download page: https://owncloud.com/download/#desktop-clients
+.. _ownCloud download page: https://owncloud.org/download/#owncloud-desktop-client
